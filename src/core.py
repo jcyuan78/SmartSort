@@ -29,6 +29,16 @@ class SmartSortCore:
                 content_summary,file_type = LocalExtractor.extract_image_info(file_path)
             elif ext in ['.csv', '.xlsx']:
                 content_summary,file_type = LocalExtractor.extract_table(file_path)
+            elif ext in ['.docx', '.doc']:
+                content_summary, file_type = LocalExtractor.extract_word(file_path)
+            elif ext in ['.pptx', '.ppt']:
+                content_summary, file_type = LocalExtractor.extract_pptx(file_path)
+            elif ext in ['.html', '.htm']:
+                content_summary, file_type = LocalExtractor.extract_html(file_path)
+            elif ext == '.epub':
+                content_summary, file_type = LocalExtractor.extract_epub(file_path)            
+            else :
+                return None
             
             # 组合元数据
             profile = f"文件名: {os.path.basename(file_path)}\n内容摘要: {content_summary}"

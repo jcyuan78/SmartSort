@@ -1,0 +1,4 @@
+config.json
+venv/
+testdata/
+src/__pycache__/

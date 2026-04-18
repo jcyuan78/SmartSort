@@ -7,6 +7,7 @@ import base64
 from datetime import datetime
 from core import SmartSortCore
 from brain import SmartBrain
+import json
 
 def record_log(log_data):
     """将处理记录写入 CSV 文件"""
@@ -87,15 +88,13 @@ def main(source_dir):
     brain = SmartBrain()
     
     #target_root = "./sorted_files"
-    target_root = "C:\\Users\\StorageDV\\Nextcloud\\book"
+    #target_root = "C:\\Users\\StorageDV\\Nextcloud\\book"
     # 两个特殊文件夹路径
-    DUPLICATE_DIR = os.path.join(target_root, "系统管理/重复文件")
-    UNKNOWN_DIR = os.path.join(target_root, "系统管理/待后续解析")
     os.makedirs(UNKNOWN_DIR, exist_ok=True)
     os.makedirs(DUPLICATE_DIR, exist_ok=True)
 
     # 定义目前支持的格式
-    SUPPORTED_EXTS = ['.pdf', '.jpg', '.jpeg', '.png', '.txt', '.md', '.csv', '.xlsx', '.gif']
+#    SUPPORTED_EXTS = ['.pdf', '.jpg', '.jpeg', '.png', '.txt', '.md', '.csv', '.xlsx', '.gif']
 
     # 获取当前已经存在的文件夹作为参考
     def get_existing_dirs():
@@ -109,12 +108,9 @@ def main(source_dir):
 
 #    debug_count = 300
     for root, _, files in os.walk(source_dir):
-#        if debug_count <= 0: break
         for file_name in files:
             file_path = os.path.join(root, file_name)
             if file_name.startswith('.'): continue
-#            debug_count -= 1
-#            if debug_count < 0: break
 
             total_processed += 1
             log_entry = {
@@ -132,19 +128,19 @@ def main(source_dir):
 
             print(f"\n🧠 正在处理: {file_name}")
             ext = os.path.splitext(file_name)[1].lower()
+            profile = core.generate_file_profile(file_path)
+            
             # --- 格式检查, 不符合格式的文件待以后处理 ---
-            if ext not in SUPPORTED_EXTS:
+            #if ext not in SUPPORTED_EXTS:
+            if not profile:
                 print(f"⚠️ 跳过未知格式: {file_name} -> 移至待处理区")
-#                target_path = os.path.join(UNKNOWN_DIR, file_name)
                 safe_copy(file_path, UNKNOWN_DIR, file_name)
-#                shutil.move(file_path, target_path) # 移动过去，以后再管
                 log_entry["result"] = "UNKNOWN_FORMAT"
                 record_log(log_entry)
                 unsorted += 1
                 continue
 
             # 本地提取摘要，分析失败的文件也放入待处理区，避免干扰分类逻辑
-            profile = core.generate_file_profile(file_path)
             if (not profile) or (not profile.get('metadata')):
                 print(f"⚠️ 文件解析失败: {file_name} -> 移至待处理区")
                 safe_copy(file_path, UNKNOWN_DIR, file_name)
@@ -217,10 +213,6 @@ def main(source_dir):
             ext = os.path.splitext(file_name)[1]
             final_file_name = f"{safe_title}{ext}" if rename_needed else file_name
             final_dir = os.path.join(target_root, category_path)
-#            os.makedirs(final_dir, exist_ok=True)
-#            final_path = os.path.join(final_dir, final_file_name)
-#            print(f"copy file from: {file_path} to: {final_path}")
-#            shutil.copy2(file_path, final_path) # 使用 copy2 保留元数据
             final_path = safe_copy(file_path, final_dir, final_file_name)
             sorted += 1
             
@@ -243,6 +235,18 @@ def main(source_dir):
     print("\n✅ 所有文件整理完毕！")
 
 if __name__ == "__main__":
+    # 1. 加载配置
+    config_path = "config.json"
+    if not os.path.exists(config_path):
+        raise FileNotFoundError(f"找不到配置文件: {config_path}")
+        
+    with open(config_path, 'r', encoding='utf-8') as f:
+        config = json.load(f)
+    target_root = config['settings']['target_root']
+    DUPLICATE_DIR = os.path.join(target_root, config['settings']['duplicate_dir'])
+    UNKNOWN_DIR = os.path.join(target_root, config['settings']['unknown_dir'])
+
+
     if len(sys.argv) > 1:
         source_dir = sys.argv[1]
         main(source_dir)
