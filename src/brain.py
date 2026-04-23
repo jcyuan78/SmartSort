@@ -34,30 +34,6 @@ class SmartBrain:
             response = model.generate_content(prompt)
             return response.text
 
-#     def decide_category(self, file_summary, existing_categories):
-#         """
-#         核心决策：根据文件摘要和现有分类，返回目标文件夹路径
-#         """
-#         prompt = f"""
-# 你是一个专业的文件整理助手 SmartSort。
-# 任务：根据给出的文件摘要，决定该文件应该放入哪个文件夹。
-
-# [现有文件夹列表]:
-# {existing_categories if existing_categories else "目前尚无分类，请根据内容创建第一个"}
-
-# [待分类文件摘要]:
-# {file_summary}
-
-# [规则]:
-# 1. 如果摘要中包含英文描述（如图片 AI 描述），请先理解其含义。
-# 2. 优先匹配现有文件夹。如果没有合适的，请创建一个简洁的中文文件夹名。
-# 3. 返回格式必须为纯路径，例如：账务/2026/收据 或 学习/数理逻辑。
-# 4. 文件夹层级建议不要超过3层。
-
-# 请只返回文件夹路径，不要有任何解释文字。
-# """
-#         return self._call_llm(prompt).strip()
-
     def decide_category(self, file_summary, current_filename, historical_context,
                         existing_info="", similarity_score=1.0):
         """
@@ -110,12 +86,9 @@ class SmartBrain:
 }}
 
 """
-#        print(f"prompt: {prompt}")
-        response_text = self._call_llm(prompt)
         try:
+            response_text = self._call_llm(prompt)
             # 提取并清理 JSON 字符串（防止 AI 返回 Markdown 代码块）
-#            clean_json = response_text.strip().replace('```json', '').replace('```', '')
-#            print(f"LLM 原始响应: {response_text}")
             return json.loads(response_text)
         except Exception as e:
             print(f"❌ JSON 解析失败: {e}")
@@ -125,6 +98,32 @@ class SmartBrain:
                 "should_rename": False,
                 "reason": "LLM 响应无法解析，默认分类为未分类，保持原名"
             }
+
+    def generate_search_terms(self, user_query):
+        prompt = f"""
+你是一个文档检索助手。请将用户的自然语言查询转换为一组用于数据库检索的关键词。
+要求：
+1. 提取核心实体（如文件名、作者、技术名词）。
+2. 给出 3-5 个同义词或相关的技术术语。
+3. 如果包含时间或类别，请单独列出。
+
+用户查询：{user_query}
+
+输出格式（JSON）：
+{{
+    "keywords": ["词1", "词2"],
+    "tech_terms": ["术语1"],
+    "category": "类别"
+}}
+"""
+        # 调用你项目中的 LLM 接口
+        print(f"prompt: {prompt}")
+        response = self._call_llm(prompt)
+        print(f"LLM 返回的原始响应: {response}")
+        return json.loads(response)        
+        
+
+# 一下函数是之前版本的 decide_category 逻辑，不再使用。保留以备参考        
 
 def decide_smart_category(self, file_summary, existing_info, similarity_score):
         """

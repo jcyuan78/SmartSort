@@ -14,6 +14,34 @@ class SmartSortCore:
         self.client = chromadb.PersistentClient(path="./smartsort_db")
         self.collection = self.client.get_or_create_collection(name="file_memory")
 
+    def query_files(self, search_query, metadata_filer, top_k=5):
+        """查询最相似的历史文件记录，返回包含摘要、类别、相似度等信息的列表"""
+        query_embedding = self.model.encode(search_query).tolist()
+        results = self.collection.query(
+#            query_texts=[search_query],
+            query_embeddings=[query_embedding],
+            n_results=top_k,
+#            where=metadata_filer,
+            include=["documents","metadatas", "distances"]
+        )
+        print(f"🔍 查询到 {len(results['ids'][0])} 条相关记录。结果：\n{results}")
+        
+        similar_files = []
+        for i in range(len(results['ids'][0])):
+            metadata = results['metadatas'][0][i]
+            distance = results['distances'][0][i]
+            similar_files.append({
+                "filename": os.path.basename(metadata['path']),
+                "path": metadata['path'],
+                "category": metadata['category'],
+                "summary": metadata['summary'],
+#                "category": metadata['category'],
+                "similarity": round((2 - distance) * 50, 1), # 简单的打分逻辑
+#                "distinct": "高" if distance > 0.4 else "低"
+            })
+        print(f"🔍 格式化后的相似文件信息: {similar_files}")
+        return similar_files
+
     def generate_file_profile(self, file_path):
         """为文件创建本地画像"""
         ext = os.path.splitext(file_path)[1].lower()
@@ -82,7 +110,6 @@ class SmartSortCore:
         # .decode('utf-8') 是为了将 bytes 转换为普通的字符串，方便存入 CSV
         b64_hash = base64.b64encode(digest).decode('utf-8')
         return b64_hash
-#        return sha256_hash.hexdigest()
 
     def is_duplicate(self, file_hash):
         """检查哈希值是否已在数据库中"""

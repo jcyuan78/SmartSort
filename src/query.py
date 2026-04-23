@@ -1,8 +1,51 @@
 import os
 from core import SmartSortCore
+from brain import SmartBrain
 
 def search_files(query_text):
     core = SmartSortCore()
+    brain = SmartBrain()
+
+    llm_terms = brain.generate_search_terms(query_text)
+
+# 1. 构造语义查询文本（将关键词合并，增加检索权重）
+    search_query = " ".join(llm_terms.get('keywords', []) + llm_terms.get('tech_terms', []))
+    
+    # 2. 构造元数据过滤器
+    # 如果 LLM 识别出了类别，则进行硬过滤，否则不设限
+    metadata_filter = None
+    if llm_terms.get('category'):
+        metadata_filter = {"category": llm_terms['category']}
+
+    print(f"🔍 搜索关键词: '{search_query}'，元数据过滤: {metadata_filter}")
+    # 3. 执行查询
+    results = core.query_files(search_query, metadata_filter, top_k=5)
+    print(f"🔍 检索结果: '{results}'...")
+    for file in results:
+        print(f"文件: {file['filename']}")
+        print(f"位置: {file['path']}")
+        print(f"类别: {file['category']}")
+        print(f"摘要预览: {file['summary']}...")
+        print(f"相关度评分: {file['similarity']}%")
+        print("-" * 50)
+#    return format_results(results)
+
+
+def format_results(results):
+    """格式化输出检索到的文件信息"""
+    formatted = []
+    if not results['ids']:
+        return formatted
+        
+    for i in range(len(results['ids'][0])):
+        item = {
+            "id": results['ids'][0][i],
+            "document": results['documents'][0][i],
+            "metadata": results['metadatas'][0][i],
+            "distance": results['distances'][0][i] # 距离越小，相关度越高
+        }
+        formatted.append(item)
+    return formatted
     
     print(f"🔍 正在检索: '{query_text}'...")
     

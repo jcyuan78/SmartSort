@@ -2,3 +2,5 @@ config.json
 venv/
 testdata/
 src/__pycache__/
+*.log
+backup-db/
